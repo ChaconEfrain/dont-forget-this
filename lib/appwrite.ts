@@ -1,11 +1,14 @@
-import { Client, Account, Avatars, Databases, OAuthProvider } from 'react-native-appwrite';
+import { Client, Account, Avatars, Databases, OAuthProvider, ID } from 'react-native-appwrite';
 import * as Linking from 'expo-linking';
 import { openAuthSessionAsync } from 'expo-web-browser';
+import { User } from '@/types/user';
 
 export const config = {
     platform: 'com.efrain.dontforgetthis',
+    endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
     projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
-    endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT
+    databaseId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+    usersCollectionId: process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
 }
 
 const client = new Client()
@@ -40,6 +43,20 @@ export async function login() {
   
       const session = await account.createSession(userId, secret);
       if (!session) throw new Error("Failed to create session");
+
+      // Create user on users collection
+      const user = await account.get();
+      const newUser = await databases.createDocument(
+        config.databaseId!,
+        config.usersCollectionId!,
+        ID.unique(),
+        {
+          name: user.name,
+          email: user.email,
+        }
+      );
+
+      if (!newUser) throw new Error("Failed to create user on users collection");
   
       return session;
     } catch (error) {

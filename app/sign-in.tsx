@@ -14,7 +14,6 @@ export default function SignIn() {
 
     const handleLogin = async () => {
         const result = await login();
-        console.log(result)
         if (result) {
           refetch();
         } else {
