@@ -15,7 +15,12 @@ module.exports = {
       },
       colors: {
         primary: "#fe8b48",
-        dark: "#001d3f"
+        'primary-light': '#fff3ed',
+        'primary-medium': '#ffe8da',
+        'primary-highlight': '#feb991',
+        accent: "#001d3f",
+        'accent-light': '#e6e8ec',
+        'accent-medium': '#ccd2d9',
       }
     },
   },
