@@ -1,29 +1,38 @@
-import { Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from 'react-native-google-places-autocomplete';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Arrow from "@/constants/icons";
-import { useRef, useState } from "react";
+import { type Dispatch, type SetStateAction, useRef, useState } from "react";
 import { useGlobalContext } from "@/hooks/useGlobalContext";
 import Toast from "react-native-toast-message";
+import { LocationI } from "@/lib/provider";
+import { createLocationReminder } from "@/lib/location-reminder";
 
 interface State {
 	title: string;
-  latitude: number;
+  location: string;
 	reminder: string | string[];
 	listValue: string;
+	latitude: number;
+	longitude: number;
 }
 
 export default function CreateLocationReminder() {
 
-	const {user} = useGlobalContext();
+	const {user, currentLocation} = useGlobalContext();
 
 	const [state, setState] = useState<State>({
 		title: '',
-    latitude: 0,
+    location: '',
 		reminder: '',
 		listValue: '',
+		latitude: 0,
+		longitude: 0
 	});
 	const [reminderMode, setReminderMode] = useState<'Texto' | 'Lista'>('Texto');
+	const [showModal, setShowModal] = useState(false)
 	const reminderRef = useRef<TextInput>(null);
 	const titleRef = useRef<TextInput>(null);
 
@@ -36,10 +45,41 @@ export default function CreateLocationReminder() {
 			alert('El recordatorio es requerido');
 			return;
 		}
+		if (!state.location.trim()) {
+			alert('La ubicación es requerida');
+			return;
+		}
 		if (!user) {
 			alert('Debes iniciar sesión para crear un recordatorio');
 			return;
 		}
+
+		const result = await createLocationReminder(state.title, state.latitude, state.longitude, state.reminder.toString(), user.email)
+
+		if (result) {
+			Toast.show({
+				type: 'success',
+				text1: 'Recordatorio creado con éxito',
+				visibilityTime: 3000,
+				autoHide: true
+			});
+			setState({
+				title: '',
+        location: '',
+				reminder: '',
+				listValue: '',
+				latitude: 0,
+				longitude: 0
+			});
+			reminderRef.current?.blur();
+			titleRef.current?.blur();
+		} else {
+			Toast.show({
+				type: 'error',
+				text1: 'Error al crear el recordatorio',
+			})
+		}
+
   }
 
 	return (
@@ -71,12 +111,21 @@ export default function CreateLocationReminder() {
 					</View>
           <View className="gap-2">
 						<Text className="text-accent text-lg font-rubik-medium">Ubicación</Text>
-						<TouchableOpacity>
+						<TouchableOpacity onPress={() => {
+							setShowModal(true)
+							titleRef.current?.blur();
+							reminderRef.current?.blur();
+						}}>
 							<TextInput 
 								editable={false}
 								className="text-lg font-rubik text-accent border-accent-medium border-[1px] p-4 rounded-lg"
 								placeholder="Calle..."
-								value={''}
+								value={state.location.length > 35 ? state.location.slice(0, 35) + '...' : state.location}
+								onPressIn={() => {
+									setShowModal(true)
+									titleRef.current?.blur();
+									reminderRef.current?.blur();
+								}}
 							/>
 						</TouchableOpacity>
 					</View>
@@ -196,6 +245,186 @@ export default function CreateLocationReminder() {
 					</Text>
 				</TouchableOpacity>
 			</ScrollView>
+			{showModal &&
+			 <MapsModal 
+				showModal={showModal} 
+				setShowModal={setShowModal} 
+				currentLocation={currentLocation} 
+				setState={setState}
+			/>}
 		</SafeAreaView>
+	)
+}
+
+interface ModalProps {
+	showModal: boolean;
+	setShowModal: Dispatch<SetStateAction<boolean>>;
+	currentLocation: LocationI | undefined;
+	setState: Dispatch<SetStateAction<State>>;
+}
+
+function MapsModal({showModal, setShowModal, currentLocation, setState}: ModalProps) {
+
+	const mapRef = useRef<MapView>(null);
+	const searchRef = useRef<GooglePlacesAutocompleteRef>(null);
+	const [region, setRegion] = useState<Region>()
+
+	return (
+		<View className="">
+      <Modal
+				className=""
+        animationType="slide"
+        transparent={false}
+        visible={showModal}
+        onRequestClose={() => setShowModal(false)}
+      >
+					<View className="">
+						<GooglePlacesAutocomplete
+							ref={searchRef}
+							debounce={300}
+							styles={{
+								textInputContainer: {
+									position: 'absolute',
+									top: 20,
+									left: '5%',
+									zIndex: 1,
+									width: '90%',
+								},
+								listView: {
+									width: '90%',
+									backgroundColor: 'white',
+									position: 'absolute',
+									top: 60,
+									left: '5%',
+									zIndex: 1,
+								},
+								row: {
+									backgroundColor: 'white',
+									width: '100%'
+								}
+							}}
+							isRowScrollable={false}
+							placeholder="Buscar ubicación"
+							fetchDetails={true}
+							onPress={(data, details = null) => {
+							  console.log('data --> ', data)
+							  if (details) {
+							    console.log('details --> ', details.geometry)
+							    const { lat, lng } = details.geometry.location;
+							    setRegion({
+							      latitude: lat,
+							      longitude: lng,
+							      latitudeDelta: 0.005,
+							      longitudeDelta: 0.005,
+							    });
+			
+							    // Mover el mapa a la nueva ubicación
+							    mapRef.current?.animateToRegion({
+							      latitude: lat,
+							      longitude: lng,
+							      latitudeDelta: 0.005,
+							      longitudeDelta: 0.005,
+							    });
+
+									setState((state) => ({
+							      ...state,
+							      location: data.description,
+							      latitude: lat,
+							      longitude: lng,
+							    }));
+
+							  }
+							}}
+							onFail={(error) => console.error(error)}
+							query={{
+								key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY!,
+								language: 'es',
+							}}
+						/>
+						</View>
+          <View className="flex-1">
+						{!currentLocation ? <ActivityIndicator/> :
+            <MapView
+							ref={mapRef}
+              style={{ flex: 1 }}
+              initialRegion={currentLocation}
+              provider={PROVIDER_GOOGLE}
+              onPoiClick={(e) => {
+								console.log(e)
+                // set region
+								setRegion({
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+									latitudeDelta: 0.005,
+									longitudeDelta: 0.005,
+								});
+
+								mapRef.current?.animateToRegion({
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+									latitudeDelta: 0.005,
+									longitudeDelta: 0.005,
+								});
+
+								searchRef.current?.setAddressText(e.nativeEvent.name);
+								searchRef.current?.blur()
+
+								setState((state) => ({
+									...state,
+									location: e.nativeEvent.name,
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+								}));
+              }}
+							onPress={e => {
+								console.log(e.nativeEvent)
+								setRegion({
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+									latitudeDelta: 0.005,
+									longitudeDelta: 0.005,
+								});
+
+								mapRef.current?.animateToRegion({
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+									latitudeDelta: 0.005,
+									longitudeDelta: 0.005,
+								});
+
+								searchRef.current?.setAddressText(`${e.nativeEvent.coordinate.latitude}, ${e.nativeEvent.coordinate.longitude}`);
+								searchRef.current?.blur();
+
+								setState((state) => ({
+									...state,
+									location: `${e.nativeEvent.coordinate.latitude}, ${e.nativeEvent.coordinate.longitude}`,
+									latitude: e.nativeEvent.coordinate.latitude,
+									longitude: e.nativeEvent.coordinate.longitude,
+								}))
+							}}
+            >
+							{region && 
+								<Marker
+									coordinate={{
+										latitude: region.latitude,
+										longitude: region.longitude,
+									}}
+								/>
+							}
+            </MapView>
+						}
+          </View>
+					<TouchableOpacity
+						className="bg-primary p-4 rounded-lg w-[90%] absolute bottom-6 left-[5%]"
+						onPress={() => {
+							setShowModal(false);
+						}}
+					>
+						<Text className="text-white text-lg font-rubik-medium text-center">
+							Confirmar ubicación
+						</Text>
+					</TouchableOpacity>
+      </Modal>
+    </View>
 	)
 }

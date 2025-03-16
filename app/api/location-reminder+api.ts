@@ -3,9 +3,9 @@ import { ID, Query } from "react-native-appwrite";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { title, datetime, reminder, userEmail } = body;
+  const { title, reminder, latitude, longitude, userEmail } = body;
 
-  if (!title || !datetime || !reminder) {
+  if (!title || !latitude || !reminder || !longitude) {
     console.log("Missing required fields");
     return Response.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -28,11 +28,12 @@ export async function POST(req: Request) {
 
   const newReminder = await databases.createDocument(
     config.databaseId!,
-    config.normalRemindersCollectionId!,
+    config.locationRemindersCollectionId!,
     ID.unique(),
     {
       title,
-      datetime,
+      latitude,
+      longitude,
       reminder,
       user: users[0].$id,
     }

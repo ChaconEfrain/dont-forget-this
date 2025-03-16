@@ -6,24 +6,13 @@ import "react-native-get-random-values";
 
 export default function Index() {
 
-  // const [region, setRegion] = useState({
-  //   latitude: 37.78825,
-  //   longitude: -122.4324,
-  //   latitudeDelta: 0.0922,
-  //   longitudeDelta: 0.0421,
-  // });
-
-  // const mapRef = useRef<MapView>(null);
-
   return (
     <SafeAreaView className="bg-white flex-1">
       <ScrollView className="px-4 pb-4">
           <View className="flex gap-3 mt-2">
-            <View className="flex flex-row gap-1 items-center">
               <Text className="font-rubik-medium text-xl text-accent">
                 Crea un nuevo recordatorio
               </Text>
-            </View>
             <View className="flex gap-2">
               <TouchableOpacity
                 onPress={() => {
@@ -109,54 +98,6 @@ export default function Index() {
           />
         </View>
         <View className="mt-8">
-          {/* <GooglePlacesAutocomplete
-            placeholder="Buscar ubicación"
-            fetchDetails={true}
-            onPress={(data, details = null) => {
-              console.log('data --> ', data)
-              if (details) {
-                console.log('details --> ', details.geometry)
-                const { lat, lng } = details.geometry.location;
-                setRegion({
-                  latitude: lat,
-                  longitude: lng,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                });
-    
-                // Mover el mapa a la nueva ubicación
-                mapRef.current?.animateToRegion({
-                  latitude: lat,
-                  longitude: lng,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                });
-              }
-            }}
-            onFail={(error) => console.error(error)}
-            query={{
-              key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY!,
-              language: 'es',
-            }}
-          /> */}
-          {/* <View>
-            <MapView
-              ref={mapRef}
-              style={{ flex: 1 }}
-              region={region}
-              initialRegion={{
-                latitude: 21,
-                longitude: -90,
-                latitudeDelta: 1,
-                longitudeDelta: 1,
-              }}
-              provider={PROVIDER_GOOGLE}
-              onPoiClick={(e) => {
-                console.log(e.nativeEvent);
-              }}
-            >
-            </MapView>
-          </View> */}
         </View>
       </ScrollView>
     </SafeAreaView>

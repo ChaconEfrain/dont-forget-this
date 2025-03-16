@@ -10,6 +10,7 @@ export const config = {
   databaseId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
   usersCollectionId: process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
   normalRemindersCollectionId: process.env.EXPO_PUBLIC_APPWRITE_NORMAL_REMINDERS_COLLECTION_ID,
+  locationRemindersCollectionId: process.env.EXPO_PUBLIC_APPWRITE_LOCATION_REMINDERS_COLLECTION_ID,
 }
 
 const client = new Client()
@@ -101,16 +102,6 @@ export async function getCurrentUser() {
     return null;
   } catch (error) {
     console.error(error);
-    return null;
-  }
-}
-
-export async function getJWT() {
-  try {
-    const jwt = await account.createJWT();
-    return jwt.jwt;
-  } catch (error) {
-    console.error("Error al generar JWT:", error);
     return null;
   }
 }
