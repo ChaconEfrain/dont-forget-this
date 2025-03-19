@@ -45,3 +45,38 @@ export async function POST(req: Request) {
 
   return Response.json({ reminder: newReminder }, { status: 200 });
 }
+
+export async function GET(req: Request) {
+  const params = new URL(req.url).searchParams;
+  const userEmail = params.get("userEmail");
+
+  if (!userEmail) {
+    console.log("Missing userEmail");
+    return Response.json({ error: "Missing userEmail" }, { status: 400 });
+  }
+
+  try {
+    const user = await databases.listDocuments(
+      config.databaseId!,
+      config.usersCollectionId!,
+      [Query.equal("email", userEmail)]
+    );
+    
+    if (user.documents.length === 0) {
+      console.log("User not found");
+      return Response.json({ error: "User not found" }, { status: 404 });
+    }
+  
+    const { documents: reminders } = await databases.listDocuments(
+      config.databaseId!,
+      config.normalRemindersCollectionId!,
+      [Query.equal("user", user.documents[0].$id), Query.orderAsc("datetime"), Query.limit(5)]
+    );
+  
+    return Response.json({ reminders }, { status: 200 });
+  } catch (error) {
+    console.log("Error getting normal reminders: ", error);
+    return Response.json({ error: "Error getting normal reminders" }, { status: 500 });
+  }
+
+}

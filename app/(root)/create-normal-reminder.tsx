@@ -3,10 +3,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Arrow from "@/constants/icons";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createNormalReminder } from "@/lib/normal-reminder";
 import { useGlobalContext } from "@/hooks/useGlobalContext";
 import Toast from "react-native-toast-message";
+import { useUser } from "@clerk/clerk-expo";
 
 interface State {
 	datetime: Date | undefined;
@@ -19,7 +20,7 @@ interface State {
 
 export default function CreateNormalReminder() {
 
-	const {user} = useGlobalContext();
+	const { user } = useUser();
 
 	const [state, setState] = useState<State>({
 		datetime: undefined,
@@ -29,7 +30,7 @@ export default function CreateNormalReminder() {
 		dateSelected: false,
 		timeSelected: false,
 	});
-	// const [time, setTime] = useState<number>();
+	const [loading, setLoading] = useState(false);
 	const [showDatePicker, setShowDatePicker] = useState(false);
 	const [showTimePicker, setShowTimePicker] = useState(false);
 	const [reminderMode, setReminderMode] = useState<'Texto' | 'Lista'>('Texto');
@@ -71,6 +72,7 @@ export default function CreateNormalReminder() {
 	};
 
 	const handleSubmit = async () => {
+		if (loading) return;
 		if (!state.title.trim()) {
 			alert('El título es requerido');
 			return;
@@ -87,11 +89,17 @@ export default function CreateNormalReminder() {
 			alert('Debes iniciar sesión para crear un recordatorio');
 			return;
 		}
-
+		
+		setLoading(true);
 		// set datetime to user's local timezone
 		const datetime = new Date(state.datetime.getTime() - state.datetime.getTimezoneOffset() * 60000)
 
-		const result = await createNormalReminder(state.title, datetime, state.reminder.toString(), user.email);
+		const result = await createNormalReminder({
+			title: state.title,
+			datetime,
+			reminder: state.reminder.toString(),
+			userEmail: user.emailAddresses[0].emailAddress
+		});
 
 		if (result) {
 			Toast.show({
@@ -116,6 +124,7 @@ export default function CreateNormalReminder() {
 				text1: 'Error al crear el recordatorio',
 			})
 		}
+		setLoading(false);
 	}
 
 	return (
@@ -313,9 +322,10 @@ export default function CreateNormalReminder() {
 				<TouchableOpacity
 					className="bg-primary p-4 rounded-lg mt-6"
 					onPress={handleSubmit}
+					disabled={loading}
 				>
 					<Text className="text-white text-lg font-rubik-medium text-center">
-						Crear recordatorio
+						{loading ? 'Creando recordatorio...' : 'Crear recordatorio'}
 					</Text>
 				</TouchableOpacity>
 			</ScrollView>

@@ -3,9 +3,9 @@ import { ID, Query } from "react-native-appwrite";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { title, reminder, latitude, longitude, userEmail } = body;
+  const { title, reminder, latitude, longitude, userEmail, location } = body;
 
-  if (!title || !latitude || !reminder || !longitude) {
+  if (!title || !latitude || !reminder || !longitude || !location) {
     console.log("Missing required fields");
     return Response.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       latitude,
       longitude,
       reminder,
+      location_name: location,
       user: users[0].$id,
     }
   );
@@ -45,4 +46,39 @@ export async function POST(req: Request) {
   }
 
   return Response.json({ reminder: newReminder }, { status: 200 });
+}
+
+export async function GET(req: Request) {
+  const params = new URL(req.url).searchParams;
+  const userEmail = params.get("userEmail");
+
+  if (!userEmail) {
+    console.log("Missing userEmail");
+    return Response.json({ error: "Missing userEmail" }, { status: 400 });
+  }
+
+  try {
+    const user = await databases.listDocuments(
+      config.databaseId!,
+      config.usersCollectionId!,
+      [Query.equal("email", userEmail)]
+    );
+    
+    if (user.documents.length === 0) {
+      console.log("User not found");
+      return Response.json({ error: "User not found" }, { status: 404 });
+    }
+  
+    const { documents: reminders } = await databases.listDocuments(
+      config.databaseId!,
+      config.locationRemindersCollectionId!,
+      [Query.equal("user", user.documents[0].$id)]
+    );
+  
+    return Response.json({ reminders }, { status: 200 });
+  } catch (error) {
+    console.log("Error getting normal reminders: ", error);
+    return Response.json({ error: "Error getting location reminders" }, { status: 500 });
+  }
+
 }

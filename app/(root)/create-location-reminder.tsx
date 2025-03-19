@@ -9,6 +9,7 @@ import { useGlobalContext } from "@/hooks/useGlobalContext";
 import Toast from "react-native-toast-message";
 import { LocationI } from "@/lib/provider";
 import { createLocationReminder } from "@/lib/location-reminder";
+import { useUser } from "@clerk/clerk-expo";
 
 interface State {
 	title: string;
@@ -21,7 +22,8 @@ interface State {
 
 export default function CreateLocationReminder() {
 
-	const {user, currentLocation} = useGlobalContext();
+	const { user } = useUser();
+	const {currentLocation} = useGlobalContext();
 
 	const [state, setState] = useState<State>({
 		title: '',
@@ -31,12 +33,14 @@ export default function CreateLocationReminder() {
 		latitude: 0,
 		longitude: 0
 	});
+	const [loading, setLoading] = useState(false);
 	const [reminderMode, setReminderMode] = useState<'Texto' | 'Lista'>('Texto');
 	const [showModal, setShowModal] = useState(false)
 	const reminderRef = useRef<TextInput>(null);
 	const titleRef = useRef<TextInput>(null);
 
 	const handleSubmit = async () => {
+		if (loading) return;
 		if (!state.title.trim()) {
 			alert('El título es requerido');
 			return;
@@ -53,14 +57,23 @@ export default function CreateLocationReminder() {
 			alert('Debes iniciar sesión para crear un recordatorio');
 			return;
 		}
+		
+		setLoading(true);
 
-		const result = await createLocationReminder(state.title, state.latitude, state.longitude, state.reminder.toString(), user.email)
+		const result = await createLocationReminder({
+			title: state.title,
+			reminder: state.reminder.toString(),
+			location: state.location,
+			latitude: state.latitude,
+			longitude: state.longitude,
+			userEmail: user.emailAddresses[0].emailAddress
+		})
 
 		if (result) {
 			Toast.show({
 				type: 'success',
 				text1: 'Recordatorio creado con éxito',
-				visibilityTime: 3000,
+				visibilityTime: 5000,
 				autoHide: true
 			});
 			setState({
@@ -80,6 +93,7 @@ export default function CreateLocationReminder() {
 			})
 		}
 
+		setLoading(false);
   }
 
 	return (
@@ -239,9 +253,10 @@ export default function CreateLocationReminder() {
 				<TouchableOpacity
 					className="bg-primary p-4 rounded-lg mt-6"
 					onPress={handleSubmit}
+					disabled={loading}
 				>
 					<Text className="text-white text-lg font-rubik-medium text-center">
-						Crear recordatorio
+					{loading ? 'Creando recordatorio...' : 'Crear recordatorio'}
 					</Text>
 				</TouchableOpacity>
 			</ScrollView>

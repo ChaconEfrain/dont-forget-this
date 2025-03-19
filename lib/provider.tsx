@@ -1,23 +1,10 @@
 import React, { createContext, ReactNode, useEffect, useState } from "react";
-import { getCurrentUser } from "./appwrite";
-import { useAppwrite } from "../hooks/useAppwrite";
 import { Alert } from "react-native";
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 
 export interface GlobalContextType {
-  isLogged: boolean;
-  user: User | null;
-  loading: boolean;
   currentLocation: LocationI | undefined;
-  refetch: (newParams?: Record<string, string | number>) => Promise<void>;
-}
-
-export interface User {
-  $id: string;
-  name: string;
-  email: string;
-  avatar: string;
 }
 
 export interface LocationI {
@@ -36,16 +23,6 @@ interface GlobalProviderProps {
 export const GlobalProvider = ({ children }: GlobalProviderProps) => {
 
   const [currentLocation, setCurrentLocation] = useState<LocationI | undefined>()
-
-  const {
-    data: user,
-    loading,
-    refetch,
-  } = useAppwrite({
-    fn: getCurrentUser,
-  });
-
-  const isLogged = !!user;
 
   useEffect(() => {
     (async () => {
@@ -73,11 +50,7 @@ export const GlobalProvider = ({ children }: GlobalProviderProps) => {
   return (
     <GlobalContext.Provider
       value={{
-        isLogged,
-        user,
         currentLocation,
-        loading,
-        refetch,
       }}
     >
       {children}
